@@ -1,86 +1,84 @@
-# HydroToxNet
+# HydroToxNet: Forecasting Microcystin Risk in Western Lake Erie
 
-Physics-guided multi-horizon forecasting of microcystin risk in western Lake Erie.
+HydroToxNet is a physics-guided spatiotemporal neural network for forecasting particulate microcystin risk in western Lake Erie 7, 14, and 21 days ahead. The model combines local ecological conditions, recent toxin history, information from neighboring monitoring stations, and river and meteorological forcing to predict Elevated and HigherRisk toxin conditions.
 
-HydroToxNet forecasts whether particulate microcystin concentrations reach **Elevated (≥1.0 µg/L)** or **HigherRisk (≥1.6 µg/L)** levels **7, 14, and 21 days ahead**. The model combines local ecological conditions, recent toxin history, spatial information from neighboring monitoring stations, and river and meteorological forcing.
+---
 
-## Summary
+## How It Works
 
-- **Data:** Western Lake Erie monitoring observations from 2012–2022
-- **Stations:** 8 NOAA GLERL/CIGLR monitoring stations
-- **Forecast horizons:** 7, 14, and 21 days
-- **Targets:** Elevated (≥1.0 µg/L) and HigherRisk (≥1.6 µg/L)
-- **Model:** Physics-guided spatiotemporal neural network
-- **Inputs:** Ecological conditions, recent toxin history, neighboring stations, river forcing, and meteorology
-- **Evaluation:** AUPRC, AUROC, F1, MCC, Precision, Recall, and Brier score
-- **Analysis:** Ablations, baseline comparisons, nitrogen importance, and toxin-history importance
+HydroToxNet combines three information sources. The **Ecological Susceptibility** component represents local water quality, bloom biomass, nutrient, and seasonal conditions. The **Local Toxin Persistence** component uses particulate microcystin measurements from the current week and the previous three weeks. The **Spatial Transport and External Forcing** component uses information from other monitoring stations together with river and meteorological conditions.
 
-## Repository Structure
+For each source and target station pair, the spatial component begins with a physics-guided prior based on source-to-target distance, wind alignment, and particulate microcystin concentration at the source station. A learned edge correction then adjusts these spatial relationships using observed data. The three model components are combined to generate Elevated and HigherRisk forecasts at 7, 14, and 21 days.
 
-```text
-HydroToxNet/
-├── data_collection.py
-├── data_preprocessing.py
-├── model.py
-├── model_training.py
-├── model_evaluation.py
-├── ablation.py
-├── baseline.py
-└── model_interpretation.py
-```
+---
 
-| File | Description |
-|---|---|
-| `data_collection.py` | Collects and combines lake, river, meteorological, and station data |
-| `data_preprocessing.py` | Performs weekly aggregation, feature construction, screening, imputation, scaling, and target construction |
-| `model.py` | Defines the HydroToxNet architecture |
-| `model_training.py` | Runs hyperparameter search and five-seed model training |
-| `model_evaluation.py` | Evaluates predictions, selects thresholds, and performs bootstrap comparisons |
-| `ablation.py` | Runs component and predictor-group ablation experiments |
-| `baseline.py` | Trains and evaluates baseline models |
-| `model_interpretation.py` | Runs permutation importance and annual interpretation analyses |
+## Components
 
-## Model
+**1. Data Collection** — `data_collection.py`
 
-HydroToxNet contains three components:
+Collects and combines NOAA GLERL/CIGLR lake monitoring data, USGS Maumee River data, NOAA NDBC wind data, and monitoring station information into the master dataset.
 
-### Ecological Susceptibility
+**2. Data Preprocessing** — `data_preprocessing.py`
 
-Encodes local water quality, bloom biomass, nutrient, and seasonal conditions at the forecast origin.
+Performs weekly aggregation, predictor coverage screening, Spearman correlation screening, derived feature construction, toxin-history construction, target generation, median imputation, and standardization using training data only.
 
-### Local Toxin Persistence
+**3. HydroToxNet Model** — `model.py`
 
-Uses particulate microcystin measurements from the current week and the previous three weeks.
+Defines the Ecological Susceptibility, Local Toxin Persistence, Spatial Transport and External Forcing, learned edge correction, fusion network, and multi-horizon output heads.
 
-### Spatial Transport and External Forcing
+**4. Model Training** — `model_training.py`
 
-Uses information from other monitoring stations together with river and meteorological conditions.
+Runs the hyperparameter search and trains HydroToxNet using weighted masked binary cross-entropy, early stopping, and five random seeds.
 
-The spatial component begins with a physics-guided prior based on:
+**5. Model Evaluation** — `model_evaluation.py`
 
-- source-to-target distance
-- wind alignment
-- particulate microcystin concentration at the source station
+Averages predictions across the five seeds, selects classification thresholds using the validation data, computes evaluation metrics, and performs paired bootstrap tests with Holm adjustment.
 
-A learned edge correction then adjusts the spatial relationships using the observed data.
+**6. Ablation Study** — `ablation.py`
+
+Removes individual model components and predictor groups to measure their contribution, including the ecological component, toxin-history component, spatial and external component, physical spatial prior, learned correction, nitrogen predictors, and prior toxin history.
+
+**7. Baseline Comparison** — `baseline.py`
+
+Compares HydroToxNet with Logistic Regression, Random Forest, XGBoost, LSTM, and Graph Attention Network models using the same chronological split, targets, and preprocessing procedure.
+
+**8. Model Interpretation** — `model_interpretation.py`
+
+Computes permutation importance for grouped nitrogen predictors, prior toxin history, lake nitrate plus nitrite, and lake ammonia. It also evaluates how predictor importance changes across toxin states, forecast horizons, and test years.
+
+---
+
+## Results
+
+HydroToxNet predicts two microcystin risk levels:
+
+- **Elevated:** particulate microcystin ≥ 1.0 µg/L
+- **HigherRisk:** particulate microcystin ≥ 1.6 µg/L
+
+| Target | 7 Days | 14 Days | 21 Days |
+|---|---:|---:|---:|
+| **Elevated AUPRC** | **0.845** | **0.839** | **0.700** |
+| **HigherRisk AUPRC** | **0.716** | **0.634** | **0.495** |
+
+HydroToxNet achieved the highest AUPRC across all six toxin-state and forecast-horizon settings compared with the evaluated baseline models.
+
+---
 
 ## Data
 
 The study uses western Lake Erie observations from **2012 through 2022**.
 
-### Data Sources
+The eight lake monitoring stations used for model development are:
+
+`WE02`, `WE04`, `WE06`, `WE08`, `WE09`, `WE12`, `WE13`, and `WE15`
+
+Data sources include:
 
 - NOAA GLERL/CIGLR lake monitoring data
 - USGS Maumee River watershed data
 - NOAA NDBC station 45005 wind data
 
-### Monitoring Stations
-
-The eight lake stations used for model development are:
-
-`WE02`, `WE04`, `WE06`, `WE08`, `WE09`, `WE12`, `WE13`, and `WE15`
-
-### Data Split
+The chronological data split is:
 
 | Split | Years |
 |---|---|
@@ -88,141 +86,36 @@ The eight lake stations used for model development are:
 | Validation | 2018 |
 | Test | 2019–2022 |
 
-All preprocessing statistics are estimated using the training data only.
+The processed master dataset is:
 
-## Preprocessing
+`lake_erie_multimodal_master_2012_2022.csv`
 
-Run:
+---
 
-```bash
-python data_preprocessing.py
-```
-
-The preprocessing pipeline includes:
-
-- weekly aggregation of lake observations
-- weekly aggregation of watershed observations
-- wind-vector aggregation
-- predictor coverage screening
-- Spearman correlation screening
-- derived predictor construction
-- recent toxin-history construction
-- 7, 14, and 21 day target construction
-- median imputation
-- z-score standardization
-
-Future particulate microcystin measurements used to define forecast targets are not imputed.
-
-## Training
-
-Run:
+## Installation
 
 ```bash
-python model_training.py
+pip install numpy pandas scipy scikit-learn torch xgboost
 ```
 
-The final model configuration is:
+Requirements: Python, PyTorch, NumPy, pandas, SciPy, scikit-learn, and XGBoost.
 
-| Hyperparameter | Value |
-|---|---:|
-| Representation dimension | 32 |
-| Horizon embedding | 8 |
-| Dropout | 0.2 |
-| Learning rate | 1e-4 |
-| Weight decay | 1e-4 |
-| Batch size | 32 |
-| Maximum epochs | 200 |
-| Early stopping patience | 20 |
+The scripts are designed to run in **Google Colab** with Google Drive mounted at:
 
-Hyperparameters are selected using random search on the 2018 validation data.
+`/content/drive/MyDrive/hab_stgnn/`
 
-The final model is trained using **five random seeds**. Predicted probabilities are averaged across the five models before final evaluation.
+---
 
-## Evaluation
+## Citation
 
-Run:
+If you use this code, please cite:
 
-```bash
-python model_evaluation.py
+```bibtex
+@inproceedings{liang2026hydrotoxnet,
+  title={HydroToxNet: Forecasting Microcystin Risk in Western Lake Erie Reveals Changing Importance of Nitrogen and Toxin History},
+  author={Liang, Ethan},
+  year={2026}
+}
 ```
 
-The reported metrics are:
-
-- AUPRC
-- AUROC
-- F1
-- MCC
-- Precision
-- Recall
-- Brier score
-
-For each toxin state and forecast horizon, the classification threshold is selected using the 2018 validation data to maximize F1.
-
-Differences in AUPRC are evaluated using **5,000 paired bootstrap replicates** with test observations resampled by station and year. Holm adjustment is applied across the six forecasting settings.
-
-## Ablation Experiments
-
-Run:
-
-```bash
-python ablation.py
-```
-
-The following variants are evaluated:
-
-- without Ecological Susceptibility
-- without Local Toxin Persistence
-- without Spatial Transport and External Forcing
-- without the physical spatial prior
-- without the learned edge correction
-- without nitrogen predictors
-- without prior toxin history
-
-Each variant is retrained using the same training and evaluation procedure as the full model.
-
-## Baseline Models
-
-Run:
-
-```bash
-python baseline.py
-```
-
-HydroToxNet is compared with:
-
-- Logistic Regression
-- Random Forest
-- XGBoost
-- Long Short-Term Memory
-- Graph Attention Network
-
-The LSTM uses a four-week sequence containing the current observation and the previous three weeks. The GAT uses the eight monitoring stations as nodes with a static distance-based adjacency structure.
-
-## Model Interpretation
-
-Run:
-
-```bash
-python model_interpretation.py
-```
-
-The interpretation analysis evaluates:
-
-- grouped nitrogen permutation importance
-- prior toxin-history permutation importance
-- lake nitrate plus nitrite importance
-- lake ammonia importance
-- annual importance from 2019–2022
-
-The nitrogen group includes lake ammonia, lake nitrate plus nitrite, river nitrate plus nitrite, ammonia fraction of inorganic nitrogen, and the inorganic nitrogen-to-total-phosphorus ratio.
-
-Permutation importance is calculated as:
-
-> **Importance = original AUPRC − permuted AUPRC**
-
-## Paper
-
-**HydroToxNet: Forecasting Microcystin Risk in Western Lake Erie Reveals Changing Importance of Nitrogen and Toxin History**
-
-Publication information and DOI will be added when available.
-
+Publication venue, DOI, and page information will be added after publication.
