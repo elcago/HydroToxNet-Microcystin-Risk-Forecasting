@@ -1,49 +1,37 @@
-# HAB ST-GNN: Multimodal Spatiotemporal Graph Attention Network for Western Lake Erie Cyanobacterial Bloom Forecasting
+# HydroToxNet
 
-Companion codebase for the paper *"A Multimodal Spatiotemporal Graph Attention
-Network for Early Warning of Cyanobacterial Harmful Algal Blooms in Western
-Lake Erie."*
+Companion codebase for the paper *HydroToxNet: Forecasting Microcystin Risk in Western Lake Erie Reveals Changing Importance of Nitrogen and Toxin History*.
 
-All scripts are designed to run in **Google Colab** and expect Google Drive
-mounted at `/content/drive/MyDrive/hab_stgnn/`. Scripts are numbered in the
-order they were developed; not every script needs to be run to reproduce the
-paper's final results — see **Minimal Reproduction Path** below.
+HydroToxNet is a physics guided spatiotemporal model for forecasting particulate microcystin risk in western Lake Erie at 7, 14, and 21 day horizons. The model combines local ecological conditions, recent toxin history, information from neighboring monitoring stations, and river and meteorological forcing.
 
-## Directory Structure
+All scripts are designed to run in **Google Colab** and expect Google Drive to be mounted at:
 
-| Folder | Contents |
+`/content/drive/MyDrive/hab_stgnn/`
+
+## Repository Structure
+
+| File | Purpose |
 |---|---|
-| `data_acquisition/` | River gage (USGS), lake station (GLERL), and CyAN satellite data pipelines, including the extensive CMR API debugging history (scripts 25-40) |
-| `model_training/` | Core ST-GNN architecture development, from early prototypes through the official baseline (script 15) and satellite-integrated model (script 43) |
-| `ablation_studies/` | The 11-experiment diagnostic campaign, sequence-length/lead-time ablations, GATv2/ensemble/max-aggregation variants, and the not-yet-executed ViT and fixed-flow-propagation scripts |
-| `diagnostics/` | Error analysis, attention inspection, uncertainty quantification, data quality checks |
-| `visualization/` | Figure-generating scripts (bloom maps, station maps, Toledo 2014 case study, GAT attention network) |
+| `data_collection.py` | Collect and merge lake, river, meteorological, and station data into the master dataset |
+| `data_preprocessing.py` | Perform weekly aggregation, predictor screening, feature construction, target construction, imputation, and standardization |
+| `model.py` | Define the HydroToxNet architecture |
+| `model_training.py` | Run hyperparameter search and train the full HydroToxNet model across five random seeds |
+| `model_evaluation.py` | Average seed predictions, select validation thresholds, compute evaluation metrics, and run bootstrap significance tests |
+| `ablation.py` | Run component ablations and predictor group removal experiments |
+| `baseline.py` | Train and evaluate Logistic Regression, Random Forest, XGBoost, LSTM, and GAT baselines |
+| `model_interpretation.py` | Run grouped permutation importance and annual interpretation analyses |
 
-## Minimal Reproduction Path
+## Workflow
 
-To reproduce the paper's primary results without re-running the full
-debugging history:
-
-1. `data_acquisition/01_fetch_topology_colab.py` — build the 12-node station graph
-2. `data_acquisition/02_fetch_features_colab.py` + `04-05` — river gage features
-3. `data_acquisition/07_process_lake_toxin_colab.py` — lake toxin/chlorophyll labels
-4. `data_acquisition/35_cyan_production_pipeline_colab.py` or `47_cyan_multiday_average_colab.py` — satellite CI_cyano features (47 is the final, corrected multi-day-averaging version; 35 is an earlier single-day version, kept for history)
-5. `model_training/15_official_baseline_colab.py` — tabular-only baseline
-6. `model_training/43_satellite_integrated_model_colab.py` — recommended final model
-7. `ablation_studies/` — any subset of the 11 diagnostic experiments, run against the locked baseline from step 6
-
-## Known Limitations / Unfinished Work
-
-- `ablation_studies/68_vit_architecture_colab.py` — full training loop is implemented but has not yet been executed; requires patch data from `data_acquisition/47_cyan_multiday_average_colab.py`'s Cell 6 (not yet run)
-- `ablation_studies/69_fixed_flow_ablation_colab.py` — has been executed; results reported in paper Section 2.2
-- `data_acquisition/70_meteorological_expansion_colab.py` — extended meteorology (temperature/precipitation/humidity) ablation; results reported in paper Table 4, Experiment 11
-
-## Data Sources
-
-See the paper's References section for full citations. Primary sources:
-NOAA GLERL/CIGLR, USGS NWIS, NASA/NOAA CyAN, NDBC, Heidelberg University NCWQR.
-
-## Citation
-
-If you use this code, please cite the accompanying paper (citation details
-to be added upon publication/competition submission).
+```text
+data_collection.py
+        ↓
+data_preprocessing.py
+        ↓
+model_training.py
+        ↓
+model_evaluation.py
+        ↓
+├── ablation.py
+├── baseline.py
+└── model_interpretation.py
